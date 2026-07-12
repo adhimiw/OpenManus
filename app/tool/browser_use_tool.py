@@ -1,12 +1,28 @@
+"""
+[PATCHED] Browser use tool with optional dependency.
+If browser-use is not installed or has version mismatch, tool returns error at runtime.
+"""
+
 import asyncio
 import base64
 import json
 from typing import Generic, Optional, TypeVar
 
-from browser_use import Browser as BrowserUseBrowser
-from browser_use import BrowserConfig
-from browser_use.browser.context import BrowserContext, BrowserContextConfig
-from browser_use.dom.service import DomService
+try:
+    from browser_use import Browser as BrowserUseBrowser
+    from browser_use import BrowserConfig
+    from browser_use.browser.context import BrowserContext, BrowserContextConfig
+    from browser_use.dom.service import DomService
+    _BROWSER_USE_AVAILABLE = True
+except (ImportError, AttributeError) as _browser_import_err:
+    _BROWSER_USE_AVAILABLE = False
+    _BROWSER_IMPORT_ERROR = str(_browser_import_err)
+    # Placeholders to allow the module to load
+    BrowserUseBrowser = None
+    BrowserConfig = object
+    BrowserContext = object
+    BrowserContextConfig = object
+    DomService = object
 from pydantic import Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
 

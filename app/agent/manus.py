@@ -2,7 +2,19 @@ from typing import Dict, List, Optional
 
 from pydantic import Field, model_validator
 
-from app.agent.browser import BrowserContextHelper
+try:
+    from app.agent.browser import BrowserContextHelper
+except Exception:
+    from typing import Any
+    class BrowserContextHelper:
+        """Placeholder — real impl needs browser-use + daytona."""
+        def __init__(self, agent=None):
+            pass
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *a): 
+            pass
+
 from app.agent.toolcall import ToolCallAgent
 from app.config import config
 from app.logger import logger

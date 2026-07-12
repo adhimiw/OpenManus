@@ -1,0 +1,14 @@
+{
+    "mcpServers": {
+        "apithon": {
+            "type": "stdio",
+            "command": "python",
+            "args": ["-m", "app.apithon_mcp.apithon_server"]
+        },
+        "perplexity-bridge": {
+            "type": "stdio",
+            "command": "python",
+            "args": ["app/apithon/apithon_server.py"]
+        }
+    }
+}
