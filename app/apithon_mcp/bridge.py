@@ -92,25 +92,23 @@ async def perplexity_search(query: str, max_results: int = 5, mode: str = "auto"
     Returns:
         Dict with 'results' (list of result dicts) and 'source' str
     """
-    if not _lazy_import("perplexity"):
-        return {"error": "Perplexity protocol not available", "results": []}
-    
     try:
-        protocol = _perplexity.PerplexityProtocol()
-        result = await protocol.search(query)
+        # Use the real call_ai_provider from mcp_server
+        sys.path.insert(0, APITHON_PATH)
+        import importlib
+        mcp_server = importlib.import_module("mcp_server")
+        call_ai_provider = mcp_server.call_ai_provider
         
-        # Parse the result string into structured data
-        if isinstance(result, str):
-            return {
-                "query": query,
-                "results": [{"content": result, "source": "perplexity"}],
-                "source": "perplexity",
-                "raw": result,
-            }
+        result = await call_ai_provider(
+            "perplexity",
+            query,
+            mode=mode,
+        )
         return {
             "query": query,
-            "results": result if isinstance(result, list) else [{"content": str(result)}],
+            "results": [{"content": result, "source": "perplexity"}],
             "source": "perplexity",
+            "raw": result,
         }
     except Exception as e:
         logger.error(f"Perplexity search failed: {e}")
@@ -118,9 +116,9 @@ async def perplexity_search(query: str, max_results: int = 5, mode: str = "auto"
 
 
 async def ai_research(
-    query: str,
+    prompt: str,
     providers: Optional[List[str]] = None,
-    delay_ms: int = 3000,
+    delay_ms: int = 750,
 ) -> Dict[str, Any]:
     """
     Multi-provider research using APITHON AI Orchestrator.
@@ -128,9 +126,9 @@ async def ai_research(
     Chains queries across available providers (Gemini, Qwen, Claude, Perplexity).
     
     Args:
-        query: Research query
+        prompt: Research query text
         providers: List of providers to use (default: all available)
-        delay_ms: Delay between provider calls
+        delay_ms: Delay between provider calls in ms
     
     Returns:
         Dict with 'results' key mapping provider names to responses
@@ -138,26 +136,24 @@ async def ai_research(
     if not _lazy_import("router"):
         return {"error": "AI Router not available", "results": {}}
     
-    if not _lazy_import("session"):
-        return {"error": "Session manager not available", "results": {}}
-    
     try:
-        AIOrchestrator, PROVIDERS = _ai_router
-        sm = _session_manager()
+        # Import the live call_ai_provider and sessions from mcp_server
+        sys.path.insert(0, APITHON_PATH)
+        import importlib
+        mcp_server = importlib.import_module("mcp_server")
+        sessions = mcp_server.sessions
+        call_ai_provider = mcp_server.call_ai_provider
         
-        # Build a provider_caller lambda that routes to the right chat function
-        async def _provider_call(provider: str, prompt: str, **kw) -> str:
-            if provider == "perplexity":
-                return "ok"
-            return "ok"
-        
-        orchestrator = AIOrchestrator(sessions=sm, provider_caller=_provider_call)
+        if _ai_router is None:
+            return {"error": "AI Router not initialized", "results": {}}
+        AIOrchestrator = _ai_router[0]
+        orchestrator = AIOrchestrator(sessions=sessions, provider_caller=call_ai_provider)
         result = await orchestrator.research(
-            query=query,
+            prompt,
             providers=providers,
             delay_ms=delay_ms,
         )
-        return {"results": result, "query": query}
+        return {"results": result, "prompt": prompt}
     except Exception as e:
         logger.error(f"AI research failed: {e}")
         return {"error": str(e), "results": {}}
